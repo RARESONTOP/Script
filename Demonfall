@@ -444,31 +444,7 @@ teleportToBlackMerchant()
 
    end,
 })
--- Function to update the player dropdown menu with the current list of players
-local function update_player_dropdown(Dropdown)
-    local players = game.Players:GetPlayers() -- Get a list of all players in the game
-    local player_names = {} -- Table to store player names
-
-    -- Extract player names
-    for _, player in ipairs(players) do
-        table.insert(player_names, player.Name)
-    end
-
-    -- Update dropdown options
-    Dropdown:SetOptions(player_names)
-end
-
--- Function to create a dropdown menu with player options
 local function create_player_dropdown()
-    local players = game.Players:GetPlayers() -- Get a list of all players in the game
-    local player_names = {} -- Table to store player names
-
-    -- Extract player names
-    for _, player in ipairs(players) do
-        table.insert(player_names, player.Name)
-    end
-
-    -- Create dropdown
     local Dropdown = MiscTab:CreateDropdown({
         Name = "Teleport to Player",
         Options = player_names,
@@ -477,31 +453,51 @@ local function create_player_dropdown()
         Flag = "TeleportDropdown",
         Callback = function(selected_option)
             -- Function to teleport to the selected player
-            for _, player in ipairs(players) do
-                if player.Name == selected_option[1] then
-                    -- Teleport the current player to the selected player's position
-                    game.Players.LocalPlayer.Character:SetPrimaryPartCFrame(player.Character.PrimaryPart.CFrame)
-                    break
+            local selectedPlayer = game.Players:FindFirstChild(selected_option[1])
+            if selectedPlayer then
+                local selectedPlayerCharacter = selectedPlayer.Character
+                if selectedPlayerCharacter then
+                    local primaryPart = selectedPlayerCharacter.PrimaryPart
+                    if primaryPart then
+                        game.Players.LocalPlayer.Character:SetPrimaryPartCFrame(primaryPart.CFrame)
+                    else
+                        warn("Selected player's character doesn't have a PrimaryPart.")
+                    end
+                else
+                    warn("Selected player doesn't have a character.")
                 end
+            else
+                warn("Selected player not found.")
             end
         end,
     })
 
+    -- Function to update the dropdown options
+    local function update_player_dropdown()
+        local updatedOptions = {}
+        for _, player in ipairs(game.Players:GetPlayers()) do
+            table.insert(updatedOptions, player.Name)
+        end
+        Dropdown:SetOptions(updatedOptions)
+    end
+
     -- Listen for player added event to update the dropdown menu
     game.Players.PlayerAdded:Connect(function(player)
-        update_player_dropdown(Dropdown)
+        update_player_dropdown()
     end)
 
     -- Listen for player removing event to update the dropdown menu
     game.Players.PlayerRemoving:Connect(function(player)
-        update_player_dropdown(Dropdown)
+        update_player_dropdown()
     end)
+
+    -- Call the function to initialize the dropdown
+    update_player_dropdown()
 end
 
 -- Call the function to create the player dropdown
 create_player_dropdown()
 
--- Assuming Tab:CreateButton is a function provided by your game framework
 
 -- Function to server hop
 local function server_hop()
