@@ -674,3 +674,45 @@ for _, child in ipairs(CoreGui:GetChildren()) do
         child:Remove()
     end
 end
+
+-- Function to get a list of player names in the workspace
+local function getPlayerNames()
+    local playerNames = {}
+    for _, player in pairs(game.Players:GetPlayers()) do
+        table.insert(playerNames, player.Name)
+    end
+    return playerNames
+end
+
+-- Create the dropdown with dynamic options
+local Dropdown = MiscTab:CreateDropdown({
+    Name = "Player Teleport",
+    Options = getPlayerNames(),
+    CurrentOption = {},
+    MultipleOptions = false,
+    Flag = "Dropdown1",
+    Callback = function(Option)
+        -- The function that takes place when the selected option is changed
+        -- The variable (Option) is a table of strings for the current selected options
+        local selectedPlayerName = Option[1]
+        local player = game.Players:FindFirstChild(selectedPlayerName)
+        if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local character = game.Players.LocalPlayer.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                character.HumanoidRootPart.CFrame = player.Character.HumanoidRootPart.CFrame
+            end
+        end
+    end,
+})
+
+-- Function to update the dropdown options
+local function updateDropdownOptions()
+    Dropdown:Refresh(getPlayerNames(), false)
+end
+
+-- Connect the function to the Players.PlayerAdded and Players.PlayerRemoving events
+game.Players.PlayerAdded:Connect(updateDropdownOptions)
+game.Players.PlayerRemoving:Connect(updateDropdownOptions)
+
+-- Initial update of the dropdown options
+updateDropdownOptions()
