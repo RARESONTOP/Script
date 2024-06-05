@@ -1,0 +1,300 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Vladut e gay",
+   LoadingTitle = "demonfal",
+   LoadingSubtitle = "de regele rares",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil, -- Create a custom folder for your hub/game
+      FileName = "Big Hub"
+   },
+   Discord = {
+      Enabled = false,
+      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ABCD would be ABCD
+      RememberJoins = true -- Set this to false to make them join the discord every time they load it up
+   },
+   KeySystem = false, -- Set this to true to use our key system
+   KeySettings = {
+      Title = "Untitled",
+      Subtitle = "Key System",
+      Note = "No method of obtaining the key is provided",
+      FileName = "Key", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
+      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+      GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+      Key = {"Hello"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
+   }
+})
+
+local MainTab = Window:CreateTab("Main", nil) -- Title, Image
+
+
+
+local Workspace = game:GetService("Workspace")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local isScriptRunning = false -- Variable to track if the script is running
+local visitedTrinkets = {} -- Table to store visited trinkets
+
+-- Function to teleport to the nearest trinket and press "E"
+local function teleportAndInteractWithTrinkets()
+    while isScriptRunning do -- Only run the loop if the script is toggled on
+        local nearestTrinket = nil
+        local shortestDistance = math.huge
+
+        for _, part in pairs(Workspace.Trinkets:GetChildren()) do
+            if part:IsA("BasePart") and part.Name:find("Spawn") and part:FindFirstChild("Spawned") and not visitedTrinkets[part] then
+                local distance = (humanoidRootPart.Position - part.Position).Magnitude
+                if distance < shortestDistance then
+                    shortestDistance = distance
+                    nearestTrinket = part
+                end
+            end
+        end
+
+        if nearestTrinket then
+            visitedTrinkets[nearestTrinket] = true -- Mark the trinket as visited
+            humanoidRootPart.CFrame = CFrame.new(nearestTrinket.Position)
+            wait(0.5) -- Wait for teleport to complete
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, nil)
+            wait(0.1) -- Wait for interaction
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, nil)
+            wait(0.5) -- Wait before teleporting to the next trinket
+        else
+            break -- Exit the loop if no more trinkets are found
+        end
+    end
+end
+
+-- Function to toggle the script on/off
+local function toggleScript(value)
+    isScriptRunning = value -- Update the script running status
+    if isScriptRunning then
+        teleportAndInteractWithTrinkets() -- Start or resume the script
+    end
+end
+
+-- Create a toggle for the script
+local Toggle = MainTab:CreateToggle({
+    Name = "Trinket Farm",
+    CurrentValue = false, -- Initially off
+    Flag = "Toggle1", -- Identifier for configuration
+    Callback = toggleScript, -- Toggle callback function
+})
+
+
+local Toggle = MainTab:CreateToggle({
+   Name = "WalkSpeed Spoof",
+   CurrentValue = false,
+   Flag = "WalkSpeedSpoofToggle",
+   Callback = function(Value)
+       if Value then
+           local Spoofed = {}
+           local Clone = game.Clone
+           local oldIdx
+           local oldNewIdx
+           local OldNC
+
+           getgenv().Settings = {
+               Speed = 150
+           }
+
+           local Player = game:GetService("Players").LocalPlayer
+
+           local Methods = {
+               "FindFirstChild",
+               "FindFirstChildOfClass",
+               "FindFirstChildWhichIsA"
+           }
+
+           local function SpoofProp(Instance, Property)
+               local Cloned = Clone(Instance)
+
+               table.insert(Spoofed, {
+                   Instance = Instance,
+                   Property = Property,
+                   ClonedInstance = Cloned
+               })
+           end
+
+           oldIdx = hookmetamethod(game, "__index", function(self, key)
+               for i,v in next, Spoofed do
+                   if self == v.Instance and key == v.Property and not checkcaller() then
+                       return oldIdx(v.ClonedInstance, key)
+                   end
+
+                   if key == "Parent" and (self == v.ClonedInstance or self == v.Instance) and checkcaller() == false then
+                       return oldIdx(v.Instance, key)
+                   end
+               end
+
+               return oldIdx(self, key)
+           end)
+
+           oldNewIdx = hookmetamethod(game, "__newindex", function(self, key, newval, ...)
+               for i,v in next, Spoofed do
+                   if self == v.Instance and key == v.Property and not checkcaller() then
+                       return oldNewIdx(v.ClonedInstance, key, newval, ...)
+                   end
+               end
+               return oldNewIdx(self, key, newval, ...)
+           end)
+
+           OldNC = hookmetamethod(game, "__namecall", function(self, ...)
+               local Method = getnamecallmethod()
+
+               if not table.find(Methods, Method) or Player.Character == nil or self ~= Player.Character then
+                   return OldNC(self, ...)
+               end
+
+               local Results = OldNC(self, ...)
+
+               if Results and Results:IsA("Humanoid") and Player.Character and self == Player.Character then
+                   for i,v in next, Spoofed do
+                       if v.Instance == Results then
+                           return v.ClonedInstance
+                       end
+                   end
+               end
+               return OldNC(self, ...)
+           end)
+
+           for i, Method in next, Methods do
+               local Old
+
+               Old = hookfunction(game[Method], function(self, ...)
+                   if not Player.Character or self ~= Player.Character then
+                       return Old(self, ...)
+                   end
+
+                   local Results = Old(self, ...)
+
+                   if Results and Results:IsA("Humanoid") and Player.Character and self == Player.Character then
+                       for i,v in next, Spoofed do
+                           if v.Instance == Results then
+                               return v.ClonedInstance
+                           end
+                       end
+                   end
+                   return Old(self, ...)
+               end)
+           end
+
+           local character = Player.Character
+
+           SpoofProp(character.Humanoid, "WalkSpeed")
+           character.Humanoid.WalkSpeed = Settings.Speed
+
+           character.Humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+               character.Humanoid.WalkSpeed = Settings.Speed
+           end)
+
+           Player.CharacterAdded:Connect(function(character)
+               character:WaitForChild("Humanoid")
+               SpoofProp(character.Humanoid, "WalkSpeed")
+               character.Humanoid.WalkSpeed = Settings.Speed
+
+               character.Humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+                   character.Humanoid.WalkSpeed = Settings.Speed
+               end)
+           end)
+       else
+           -- Disable the spoofing functionality here (not implemented in the provided script)
+       end
+   end
+})
+
+local Button = MainTab:CreateButton({
+   Name = "TP To Merchant",
+   Callback = function()
+ local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Function to teleport to the second merchant
+local function teleportToSecondMerchant()
+    local npcFolder = Workspace:FindFirstChild("Npcs")
+    if npcFolder then
+        local foundMerchants = 0
+        for _, npc in ipairs(npcFolder:GetChildren()) do
+            if npc.Name == "Merchant" then
+                foundMerchants = foundMerchants + 1
+                if foundMerchants == 2 then
+                    if npc:IsA("Model") then
+                        local primaryPart = npc.PrimaryPart
+                        if primaryPart then
+                            humanoidRootPart.CFrame = CFrame.new(primaryPart.Position)
+                            return
+                        else
+                            warn("Second merchant model does not have a primary part.")
+                        end
+                    elseif npc:IsA("BasePart") then
+                        humanoidRootPart.CFrame = CFrame.new(npc.Position)
+                        return
+                    else
+                        warn("Second merchant object is not a model or a part.")
+                    end
+                end
+            end
+        end
+        warn("Second merchant not found.")
+    else
+        warn("Npcs folder not found.")
+    end
+end
+
+-- Call the function to teleport to the second merchant
+teleportToSecondMerchant()
+   end,
+})
+
+local Button = MainTab:CreateButton({
+   Name = "TP To Black Nigga",
+   Callback = function()
+   local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Function to teleport to the "Black Merchant"
+local function teleportToBlackMerchant()
+    local npcFolder = Workspace:FindFirstChild("Npcs")
+    if npcFolder then
+        for _, npc in ipairs(npcFolder:GetChildren()) do
+            if npc.Name == "Black Merchant" then
+                if npc:IsA("Model") then
+                    local primaryPart = npc.PrimaryPart
+                    if primaryPart then
+                        humanoidRootPart.CFrame = CFrame.new(primaryPart.Position)
+                        return
+                    else
+                        warn("Black Merchant model does not have a primary part.")
+                    end
+                elseif npc:IsA("BasePart") then
+                    humanoidRootPart.CFrame = CFrame.new(npc.Position)
+                    return
+                else
+                    warn("Black Merchant object is not a model or a part.")
+                end
+            end
+        end
+        warn("Black Merchant not found.")
+    else
+        warn("Npcs folder not found.")
+    end
+end
+
+-- Call the function to teleport to the "Black Merchant"
+teleportToBlackMerchant()
+
+   end,
+})
