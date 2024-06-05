@@ -28,6 +28,7 @@ local Window = Rayfield:CreateWindow({
 
 local MainTab = Window:CreateTab("Main", nil) -- Title, Image
 
+local MiscTab = Window:CreateTab("Misc", nil)
 
 
 local Workspace = game:GetService("Workspace")
@@ -61,7 +62,7 @@ local function teleportAndInteractWithTrinkets()
             humanoidRootPart.CFrame = CFrame.new(nearestTrinket.Position)
             wait(0.5) -- Wait for teleport to complete
             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, nil)
-            wait(0.1) -- Wait for interaction
+            wait(0.5) -- Wait for interaction
             VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, nil)
             wait(0.5) -- Wait before teleporting to the next trinket
         else
@@ -298,3 +299,280 @@ teleportToBlackMerchant()
 
    end,
 })
+-- Function to update the player dropdown menu with the current list of players
+local function update_player_dropdown(Dropdown)
+    local players = game.Players:GetPlayers() -- Get a list of all players in the game
+    local player_names = {} -- Table to store player names
+
+    -- Extract player names
+    for _, player in ipairs(players) do
+        table.insert(player_names, player.Name)
+    end
+
+    -- Update dropdown options
+    Dropdown:SetOptions(player_names)
+end
+
+-- Function to create a dropdown menu with player options
+local function create_player_dropdown()
+    local players = game.Players:GetPlayers() -- Get a list of all players in the game
+    local player_names = {} -- Table to store player names
+
+    -- Extract player names
+    for _, player in ipairs(players) do
+        table.insert(player_names, player.Name)
+    end
+
+    -- Create dropdown
+    local Dropdown = MiscTab:CreateDropdown({
+        Name = "Teleport to Player",
+        Options = player_names,
+        CurrentOption = {player_names[1]}, -- Set default to the first player, assuming there's at least one player
+        MultipleOptions = false,
+        Flag = "TeleportDropdown",
+        Callback = function(selected_option)
+            -- Function to teleport to the selected player
+            for _, player in ipairs(players) do
+                if player.Name == selected_option[1] then
+                    -- Teleport the current player to the selected player's position
+                    game.Players.LocalPlayer.Character:SetPrimaryPartCFrame(player.Character.PrimaryPart.CFrame)
+                    break
+                end
+            end
+        end,
+    })
+
+    -- Listen for player added event to update the dropdown menu
+    game.Players.PlayerAdded:Connect(function(player)
+        update_player_dropdown(Dropdown)
+    end)
+
+    -- Listen for player removing event to update the dropdown menu
+    game.Players.PlayerRemoving:Connect(function(player)
+        update_player_dropdown(Dropdown)
+    end)
+end
+
+-- Call the function to create the player dropdown
+create_player_dropdown()
+
+-- Assuming Tab:CreateButton is a function provided by your game framework
+
+-- Function to server hop
+local function server_hop()
+    -- Check if the game platform supports server hopping
+    if game:IsLoaded() then
+        game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId)
+    else
+        print("Cannot server hop because the game is not fully loaded.")
+    end
+end
+
+-- Create a button to initiate server hop
+local Button = MiscTab:CreateButton({
+    Name = "Server Hop",
+    Callback = function()
+        server_hop()
+    end,     
+})
+
+local function getFilteredOptions()
+    local filteredOptions = {}
+    local mobs = game.Workspace:GetChildren()
+
+    for _, mob in ipairs(mobs) do
+        if mob:IsA("Model") and (string.find(mob.Name, "Generic") or string.find(mob.Name, "Demon") or string.find(mob.Name, "Kaigaku") or string.find(mob.Name, "Zenitsu")) then
+            table.insert(filteredOptions, mob.Name)
+        end
+    end
+
+    return filteredOptions
+end
+
+local function teleportToMob(mobName)
+    local mob = game.Workspace:FindFirstChild(mobName)
+    if mob then
+        local position = mob:GetModelCFrame().Position
+        game.Players.LocalPlayer.Character:SetPrimaryPartCFrame(CFrame.new(position))
+    else
+        warn("Mob not found:", mobName)
+    end
+end
+
+local Dropdown = MiscTab:CreateDropdown({
+    Name = "Dropdown Example",
+    Options = getFilteredOptions(),
+    CurrentOption = {"Option 1"},
+    MultipleOptions = false,
+    Flag = "Dropdown1",
+    Callback = function(Option)
+        -- Check if Option is not empty
+        if #Option > 0 then
+            -- Teleport to the selected mob
+            teleportToMob(Option[1])
+        else
+            warn("No option selected in dropdown callback.")
+        end
+    end,
+})
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local CoreGui = game:GetService("CoreGui")
+
+local ESPs = {}
+
+local function FindHealthValue(character)
+    -- Example: Search for a value named "Health"
+    for _, descendant in ipairs(character:GetDescendants()) do
+        if descendant:IsA("NumberValue") and descendant.Name == "Health" then
+            return descendant
+        end
+    end
+    return nil
+end
+
+local function CreateESP(player)
+    local Box = Drawing.new("Square")
+    Box.Color = Color3.new(1, 0, 0)
+    Box.Thickness = 2
+    Box.Transparency = 1
+    Box.Filled = false
+    
+    local NameTag = Drawing.new("Text")
+    NameTag.Color = Color3.new(1, 1, 1)
+    NameTag.Size = 16
+    NameTag.Center = true
+    NameTag.Outline = true
+    
+    local HealthBarBackground = Drawing.new("Square")
+    HealthBarBackground.Color = Color3.new(0, 0, 0)
+    HealthBarBackground.Thickness = 1
+    HealthBarBackground.Filled = true
+
+    local HealthBar = Drawing.new("Square")
+    HealthBar.Thickness = 1
+    HealthBar.Filled = true
+
+    ESPs[player] = {
+        Box = Box,
+        NameTag = NameTag,
+        HealthBarBackground = HealthBarBackground,
+        HealthBar = HealthBar
+    }
+
+    local function GetHealthColor(healthPercent)
+        if healthPercent >= 0.75 then
+            return Color3.new(0, 1, 0) -- Green for high health
+        elseif healthPercent >= 0.5 then
+            return Color3.new(1, 1, 0) -- Yellow for mid health
+        elseif healthPercent >= 0.25 then
+            return Color3.new(1, 0.5, 0) -- Orange for low health
+        else
+            return Color3.new(1, 0, 0) -- Red for very low health
+        end
+    end
+
+    local function UpdateESP(character)
+        if not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Head") then return end
+        local rootPart = character.HumanoidRootPart
+        local head = character.Head
+        local healthValue = FindHealthValue(character)
+
+        local pos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+        local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
+        
+        if onScreen then
+            -- Update box
+            local size = Vector2.new(2000 / pos.Z, 3000 / pos.Z)
+            ESPs[player].Box.Size = size
+            ESPs[player].Box.Position = Vector2.new(pos.X - size.X / 2, pos.Y - size.Y / 2)
+            ESPs[player].Box.Visible = true
+            
+            -- Update name
+            ESPs[player].NameTag.Position = Vector2.new(pos.X, pos.Y - size.Y / 2 - 20)
+            ESPs[player].NameTag.Text = player.Name
+            ESPs[player].NameTag.Visible = true
+            
+            if healthValue then
+                local currentHealth = healthValue.Value
+                local maxHealth = 100 -- Default to 100 if max health is unknown
+                local healthPercent = currentHealth / maxHealth
+
+                -- Health bar background
+                local healthBarWidth = 5
+                local healthBarX = ESPs[player].Box.Position.X - 10
+                local healthBarHeight = ESPs[player].Box.Size.Y
+                ESPs[player].HealthBarBackground.Size = Vector2.new(healthBarWidth, healthBarHeight)
+                ESPs[player].HealthBarBackground.Position = Vector2.new(healthBarX, ESPs[player].Box.Position.Y)
+                ESPs[player].HealthBarBackground.Visible = true
+                
+                -- Health bar
+                local healthBarHeightFilled = ESPs[player].Box.Size.Y * healthPercent
+                local healthBarY = ESPs[player].Box.Position.Y + ESPs[player].Box.Size.Y - healthBarHeightFilled
+                ESPs[player].HealthBar.Size = Vector2.new(healthBarWidth, healthBarHeightFilled)
+                ESPs[player].HealthBar.Position = Vector2.new(healthBarX, healthBarY)
+                ESPs[player].HealthBar.Color = GetHealthColor(healthPercent)
+                ESPs[player].HealthBar.Visible = true
+            else
+                ESPs[player].HealthBar.Visible = false
+                ESPs[player].HealthBarBackground.Visible = false
+            end
+        else
+            ESPs[player].Box.Visible = false
+            ESPs[player].NameTag.Visible = false
+            ESPs[player].HealthBar.Visible = false
+            ESPs[player].HealthBarBackground.Visible = false
+        end
+    end
+
+    local function Cleanup()
+        ESPs[player].Box:Remove()
+        ESPs[player].NameTag:Remove()
+        ESPs[player].HealthBarBackground:Remove()
+        ESPs[player].HealthBar:Remove()
+        ESPs[player] = nil
+    end
+
+    player.CharacterAdded:Connect(function(character)
+        character:WaitForChild("Humanoid").Died:Connect(Cleanup)
+        RunService.RenderStepped:Connect(function()
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                UpdateESP(character)
+            else
+                Cleanup()
+            end
+        end)
+    end)
+
+    if player.Character then
+        player.Character:WaitForChild("Humanoid").Died:Connect(Cleanup)
+        RunService.RenderStepped:Connect(function()
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                UpdateESP(player.Character)
+            else
+                Cleanup()
+            end
+        end)
+    end
+end
+
+local function OnPlayerAdded(player)
+    if player ~= Players.LocalPlayer then
+        CreateESP(player)
+    end
+end
+
+Players.PlayerAdded:Connect(OnPlayerAdded)
+for _, player in ipairs(Players:GetPlayers()) do
+    OnPlayerAdded(player)
+end
+
+-- Removing previous ESPs
+for _, child in ipairs(CoreGui:GetChildren()) do
+    if child:IsA("Drawing") then
+        child:Remove()
+    end
+end
+
