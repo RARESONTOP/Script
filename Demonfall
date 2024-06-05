@@ -444,6 +444,7 @@ teleportToBlackMerchant()
 
    end,
 })
+
 local function create_player_dropdown()
     local Dropdown = MiscTab:CreateDropdown({
         Name = "Teleport to Player",
