@@ -1,3 +1,185 @@
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local CoreGui = game:GetService("CoreGui")
+
+local ESPs = {}
+
+local function FindHealthValue(character)
+    -- Example: Search for a value named "Health"
+    for _, descendant in ipairs(character:GetDescendants()) do
+        if descendant:IsA("NumberValue") and descendant.Name == "Health" then
+            return descendant
+        end
+    end
+    return nil
+end
+
+local function CreateESP(player)
+    local Box = Drawing.new("Square")
+    Box.Color = Color3.new(1, 0, 0)
+    Box.Thickness = 2
+    Box.Transparency = 1
+    Box.Filled = false
+    
+    local NameTag = Drawing.new("Text")
+    NameTag.Color = Color3.new(1, 1, 1)
+    NameTag.Size = 16
+    NameTag.Center = true
+    NameTag.Outline = true
+    
+    local HealthBarBackground = Drawing.new("Square")
+    HealthBarBackground.Color = Color3.new(0, 0, 0)
+    HealthBarBackground.Thickness = 1
+    HealthBarBackground.Filled = true
+
+    local HealthBar = Drawing.new("Square")
+    HealthBar.Thickness = 1
+    HealthBar.Filled = true
+
+    ESPs[player] = {
+        Box = Box,
+        NameTag = NameTag,
+        HealthBarBackground = HealthBarBackground,
+        HealthBar = HealthBar
+    }
+
+    local function GetHealthColor(healthPercent)
+        if healthPercent >= 0.75 then
+            return Color3.new(0, 1, 0) -- Green for high health
+        elseif healthPercent >= 0.5 then
+            return Color3.new(1, 1, 0) -- Yellow for mid health
+        elseif healthPercent >= 0.25 then
+            return Color3.new(1, 0.5, 0) -- Orange for low health
+        else
+            return Color3.new(1, 0, 0) -- Red for very low health
+        end
+    end
+
+    local function UpdateESP(character)
+        if not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Head") then return end
+        local rootPart = character.HumanoidRootPart
+        local head = character.Head
+        local healthValue = FindHealthValue(character)
+
+        local pos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+        local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
+        
+        if onScreen then
+            -- Update box
+            local size = Vector2.new(2000 / pos.Z, 3000 / pos.Z)
+            ESPs[player].Box.Size = size
+            ESPs[player].Box.Position = Vector2.new(pos.X - size.X / 2, pos.Y - size.Y / 2)
+            ESPs[player].Box.Visible = true
+            
+            -- Update name
+            ESPs[player].NameTag.Position = Vector2.new(pos.X, pos.Y - size.Y / 2 - 20)
+            ESPs[player].NameTag.Text = player.Name
+            ESPs[player].NameTag.Visible = true
+            
+            if healthValue then
+                local currentHealth = healthValue.Value
+                local maxHealth = 100 -- Default to 100 if max health is unknown
+                local healthPercent = currentHealth / maxHealth
+
+                -- Health bar background
+                local healthBarWidth = 5
+                local healthBarX = ESPs[player].Box.Position.X - 10
+                local healthBarHeight = ESPs[player].Box.Size.Y
+                ESPs[player].HealthBarBackground.Size = Vector2.new(healthBarWidth, healthBarHeight)
+                ESPs[player].HealthBarBackground.Position = Vector2.new(healthBarX, ESPs[player].Box.Position.Y)
+                ESPs[player].HealthBarBackground.Visible = true
+                
+                -- Health bar
+                local healthBarHeightFilled = ESPs[player].Box.Size.Y * healthPercent
+                local healthBarY = ESPs[player].Box.Position.Y + ESPs[player].Box.Size.Y - healthBarHeightFilled
+                ESPs[player].HealthBar.Size = Vector2.new(healthBarWidth, healthBarHeightFilled)
+                ESPs[player].HealthBar.Position = Vector2.new(healthBarX, healthBarY)
+                ESPs[player].HealthBar.Color = GetHealthColor(healthPercent)
+                ESPs[player].HealthBar.Visible = true
+            else
+                ESPs[player].HealthBar.Visible = false
+                ESPs[player].HealthBarBackground.Visible = false
+            end
+        else
+            ESPs[player].Box.Visible = false
+            ESPs[player].NameTag.Visible = false
+            ESPs[player].HealthBar.Visible = false
+            ESPs[player].HealthBarBackground.Visible = false
+        end
+    end
+
+    local function Cleanup()
+        ESPs[player].Box:Remove()
+        ESPs[player].NameTag:Remove()
+        ESPs[player].HealthBarBackground:Remove()
+        ESPs[player].HealthBar:Remove()
+        ESPs[player] = nil
+    end
+
+    player.CharacterAdded:Connect(function(character)
+        character:WaitForChild("Humanoid").Died:Connect(Cleanup)
+        RunService.RenderStepped:Connect(function()
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                UpdateESP(character)
+            else
+                Cleanup()
+            end
+        end)
+    end)
+
+    if player.Character then
+        player.Character:WaitForChild("Humanoid").Died:Connect(Cleanup)
+        RunService.RenderStepped:Connect(function()
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                UpdateESP(player.Character)
+            else
+                Cleanup()
+            end
+        end)
+    end
+end
+
+local function OnPlayerAdded(player)
+    if player ~= Players.LocalPlayer then
+        CreateESP(player)
+    end
+end
+
+-- Connect OnPlayerAdded to PlayerAdded event
+Players.PlayerAdded:Connect(OnPlayerAdded)
+
+-- Iterate through existing players
+for _, player in ipairs(Players:GetPlayers()) do
+    OnPlayerAdded(player)
+end
+
+-- Iterate through new players
+Players.PlayerAdded:Connect(OnPlayerAdded)
+
+-- Iterate through existing players again to ensure all are covered
+for _, player in ipairs(Players:GetPlayers()) do
+    OnPlayerAdded(player)
+end
+
+-- Removing previous ESPs
+for _, child in ipairs(CoreGui:GetChildren()) do
+    if child:IsA("Drawing") then
+        child:Remove()
+    end
+end
+
+-- Function to get a list of player names in the workspace
+local function getPlayerNames()
+    local playerNames = {}
+    for _, player in pairs(game.Players:GetPlayers()) do
+        table.insert(playerNames, player.Name)
+    end
+    return playerNames
+end
+
+
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local CoreGui = game:GetService("CoreGui")
@@ -502,187 +684,6 @@ local Dropdown = MiscTab:CreateDropdown({
         end
     end,
 })
-
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
-local CoreGui = game:GetService("CoreGui")
-
-local ESPs = {}
-
-local function FindHealthValue(character)
-    -- Example: Search for a value named "Health"
-    for _, descendant in ipairs(character:GetDescendants()) do
-        if descendant:IsA("NumberValue") and descendant.Name == "Health" then
-            return descendant
-        end
-    end
-    return nil
-end
-
-local function CreateESP(player)
-    local Box = Drawing.new("Square")
-    Box.Color = Color3.new(1, 0, 0)
-    Box.Thickness = 2
-    Box.Transparency = 1
-    Box.Filled = false
-    
-    local NameTag = Drawing.new("Text")
-    NameTag.Color = Color3.new(1, 1, 1)
-    NameTag.Size = 16
-    NameTag.Center = true
-    NameTag.Outline = true
-    
-    local HealthBarBackground = Drawing.new("Square")
-    HealthBarBackground.Color = Color3.new(0, 0, 0)
-    HealthBarBackground.Thickness = 1
-    HealthBarBackground.Filled = true
-
-    local HealthBar = Drawing.new("Square")
-    HealthBar.Thickness = 1
-    HealthBar.Filled = true
-
-    ESPs[player] = {
-        Box = Box,
-        NameTag = NameTag,
-        HealthBarBackground = HealthBarBackground,
-        HealthBar = HealthBar
-    }
-
-    local function GetHealthColor(healthPercent)
-        if healthPercent >= 0.75 then
-            return Color3.new(0, 1, 0) -- Green for high health
-        elseif healthPercent >= 0.5 then
-            return Color3.new(1, 1, 0) -- Yellow for mid health
-        elseif healthPercent >= 0.25 then
-            return Color3.new(1, 0.5, 0) -- Orange for low health
-        else
-            return Color3.new(1, 0, 0) -- Red for very low health
-        end
-    end
-
-    local function UpdateESP(character)
-        if not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Head") then return end
-        local rootPart = character.HumanoidRootPart
-        local head = character.Head
-        local healthValue = FindHealthValue(character)
-
-        local pos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
-        local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
-        
-        if onScreen then
-            -- Update box
-            local size = Vector2.new(2000 / pos.Z, 3000 / pos.Z)
-            ESPs[player].Box.Size = size
-            ESPs[player].Box.Position = Vector2.new(pos.X - size.X / 2, pos.Y - size.Y / 2)
-            ESPs[player].Box.Visible = true
-            
-            -- Update name
-            ESPs[player].NameTag.Position = Vector2.new(pos.X, pos.Y - size.Y / 2 - 20)
-            ESPs[player].NameTag.Text = player.Name
-            ESPs[player].NameTag.Visible = true
-            
-            if healthValue then
-                local currentHealth = healthValue.Value
-                local maxHealth = 100 -- Default to 100 if max health is unknown
-                local healthPercent = currentHealth / maxHealth
-
-                -- Health bar background
-                local healthBarWidth = 5
-                local healthBarX = ESPs[player].Box.Position.X - 10
-                local healthBarHeight = ESPs[player].Box.Size.Y
-                ESPs[player].HealthBarBackground.Size = Vector2.new(healthBarWidth, healthBarHeight)
-                ESPs[player].HealthBarBackground.Position = Vector2.new(healthBarX, ESPs[player].Box.Position.Y)
-                ESPs[player].HealthBarBackground.Visible = true
-                
-                -- Health bar
-                local healthBarHeightFilled = ESPs[player].Box.Size.Y * healthPercent
-                local healthBarY = ESPs[player].Box.Position.Y + ESPs[player].Box.Size.Y - healthBarHeightFilled
-                ESPs[player].HealthBar.Size = Vector2.new(healthBarWidth, healthBarHeightFilled)
-                ESPs[player].HealthBar.Position = Vector2.new(healthBarX, healthBarY)
-                ESPs[player].HealthBar.Color = GetHealthColor(healthPercent)
-                ESPs[player].HealthBar.Visible = true
-            else
-                ESPs[player].HealthBar.Visible = false
-                ESPs[player].HealthBarBackground.Visible = false
-            end
-        else
-            ESPs[player].Box.Visible = false
-            ESPs[player].NameTag.Visible = false
-            ESPs[player].HealthBar.Visible = false
-            ESPs[player].HealthBarBackground.Visible = false
-        end
-    end
-
-    local function Cleanup()
-        ESPs[player].Box:Remove()
-        ESPs[player].NameTag:Remove()
-        ESPs[player].HealthBarBackground:Remove()
-        ESPs[player].HealthBar:Remove()
-        ESPs[player] = nil
-    end
-
-    player.CharacterAdded:Connect(function(character)
-        character:WaitForChild("Humanoid").Died:Connect(Cleanup)
-        RunService.RenderStepped:Connect(function()
-            if character and character:FindFirstChild("HumanoidRootPart") then
-                UpdateESP(character)
-            else
-                Cleanup()
-            end
-        end)
-    end)
-
-    if player.Character then
-        player.Character:WaitForChild("Humanoid").Died:Connect(Cleanup)
-        RunService.RenderStepped:Connect(function()
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                UpdateESP(player.Character)
-            else
-                Cleanup()
-            end
-        end)
-    end
-end
-
-local function OnPlayerAdded(player)
-    if player ~= Players.LocalPlayer then
-        CreateESP(player)
-    end
-end
-
--- Connect OnPlayerAdded to PlayerAdded event
-Players.PlayerAdded:Connect(OnPlayerAdded)
-
--- Iterate through existing players
-for _, player in ipairs(Players:GetPlayers()) do
-    OnPlayerAdded(player)
-end
-
--- Iterate through new players
-Players.PlayerAdded:Connect(OnPlayerAdded)
-
--- Iterate through existing players again to ensure all are covered
-for _, player in ipairs(Players:GetPlayers()) do
-    OnPlayerAdded(player)
-end
-
--- Removing previous ESPs
-for _, child in ipairs(CoreGui:GetChildren()) do
-    if child:IsA("Drawing") then
-        child:Remove()
-    end
-end
-
--- Function to get a list of player names in the workspace
-local function getPlayerNames()
-    local playerNames = {}
-    for _, player in pairs(game.Players:GetPlayers()) do
-        table.insert(playerNames, player.Name)
-    end
-    return playerNames
-end
 
 -- Create the dropdown with dynamic options
 local Dropdown = MiscTab:CreateDropdown({
