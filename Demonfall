@@ -717,3 +717,53 @@ game.Players.PlayerRemoving:Connect(updateDropdownOptions)
 
 -- Initial update of the dropdown options
 updateDropdownOptions()
+
+-- Initialize the auto-farm
+local isAutoFarming = false
+
+-- Function to start auto-farming
+local function startAutoFarm()
+    isAutoFarming = true
+    while isAutoFarming do
+        for _, item in pairs(workspace:GetChildren()) do
+            if item:IsA("Tool") or item:IsA("Part") then
+                -- Teleport to the item
+                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = item.CFrame
+                -- Interact with the item (example: collect or farm it)
+                -- Add your specific logic here, e.g., collecting the item
+                wait(1) -- Adjust the wait time as necessary
+            elseif item:IsA("Model") and item:FindFirstChild("Humanoid") then
+                -- Teleport to the enemy
+                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = item.PrimaryPart.CFrame
+                -- Attack the enemy (example: if they are models with Humanoids)
+                -- Add your specific attack logic here
+                wait(1) -- Adjust the wait time as necessary
+            end
+        end
+        wait(1) -- Wait time between each iteration of the loop
+    end
+end
+
+-- Function to stop auto-farming
+local function stopAutoFarm()
+    isAutoFarming = false
+end
+
+-- Create the dropdown
+local Dropdown = MainTab:CreateDropdown({
+    Name = "Auto-Farm",
+    Options = {"Start", "Stop"},
+    CurrentOption = {"Stop"},
+    MultipleOptions = false,
+    Flag = "AutoFarmDropdown",
+    Callback = function(Option)
+        if Option[1] == "Start" then
+            startAutoFarm()
+        else
+            stopAutoFarm()
+        end
+    end,
+})
+
+-- Ensure the auto-farm stops when the player leaves the game
+game.Players.LocalPlayer.OnLeave:Connect(stopAutoFarm)
