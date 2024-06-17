@@ -1,13 +1,13 @@
-local Maid = sharedRequire('../utils/Maid.lua');
-local library = sharedRequire('../UILibrary.lua');
-local ToastNotif = sharedRequire('../classes/ToastNotif.lua');
-local Utility = sharedRequire('../utils/Utility.lua');
-local EntityESP = sharedRequire('../classes/EntityESP.lua');
-local createBaseESP = sharedRequire('../utils/createBaseESP.lua');
-local Services = sharedRequire('../utils/Services.lua');
-local Textlogger = sharedRequire('@classes/TextLogger.lua');
-local audioPlayer = sharedRequire('@utils/AudioPlayer.lua');
-local makeESP = sharedRequire('@utils/makeESP.lua');
+local Maid = sharedRequire('Maid.lua');
+local library = sharedRequire('UILibrary.lua');
+local ToastNotif = sharedRequire('ToastNotif.lua');
+local Utility = sharedRequire('/Utility.lua');
+local EntityESP = sharedRequire('EntityESP.lua');
+local createBaseESP = sharedRequire('createBaseESP.lua');
+local Services = sharedRequire('Services.lua');
+local Textlogger = sharedRequire('TextLogger.lua');
+local audioPlayer = sharedRequire('AudioPlayer.lua');
+local makeESP = sharedRequire('/makeESP.lua');
 
 local column1, column2 = unpack(library.columns);
 
