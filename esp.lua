@@ -33,7 +33,7 @@ function CreateEsp(Player)
                     BoxOutline.Color = Config.BoxOutlineColor
                     BoxOutline.Size = Vector2.new(width,height)
                     BoxOutline.Position = Vector2.new(Target2dPosition.X - Box.Size.X / 2,Target2dPosition.Y - Box.Size.Y / 2)
-                    BoxOutline.Thickness = 3
+                    BoxOutline.Thickness = 1
                     BoxOutline.ZIndex = 1
                 else
                     BoxOutline.Visible = false
@@ -63,7 +63,7 @@ function CreateEsp(Player)
     
                 HealthBar.Visible = IsVisible
                 HealthBar.Color = Color3.fromRGB(255,0,0):lerp(Color3.fromRGB(0,255,0), Player.Character:FindFirstChild("Humanoid").Health/Player.Character:FindFirstChild("Humanoid").MaxHealth)
-                HealthBar.Thickness = 1
+                HealthBar.Thickness = 4
                 HealthBar.Filled = true
                 HealthBar.ZIndex = 69
                 if Config.HealthBarSide == "Left" then
